@@ -2,7 +2,7 @@ In an era characterized by the proliferation of digital documents, the need for 
 
 interaction and usability. Through comprehensive testing and evaluation, the system demonstrates robust performance in document analysis tasks, offering valuable insights into the document's content while empowering users with enhanced comprehension capabilities. This paper contributes to the advancement of document analysis tools and sets the stage for further research and development in the field of intelligent document processing.
 
-Key COmponents used:
+Key Components used:
 1. Flask Integration
 2. Document Processing
 3. Vector Embedding and FAISS Integration
