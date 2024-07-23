@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with Multiple PDFs</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            text-align: center;
+            color: #4CAF50;
+        }
+        .upload-section, .chat-section {
+            margin-bottom: 30px;
+        }
+        .upload-section form, .chat-section form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .upload-section input[type="file"] {
+            margin-bottom: 15px;
+        }
+        .upload-section button, .chat-section button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .upload-section button:hover, .chat-section button:hover {
+            background-color: #45a049;
+        }
+        #uploadStatus {
+            margin-top: 15px;
+            color: #ff5722;
+            text-align: center;
+        }
+        .file-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 10px 0;
+            width: 80%;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 3px 5px;
+            margin-bottom: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            font-size: 12px;
+        }
+        .file-item span {
+            flex-grow: 1;
+            margin-right: 10px;
+        }
+        .file-item button {
+            background: none;
+            border: none;
+            color: #ff5722;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .chat-section input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .chat-history {
+            max-height: 300px; /* Adjust maximum height as needed */
+            overflow-y: auto; /* Enable vertical scrolling */
+            padding: 10px; /* Add padding for better readability */
+        }
+        .chat {
+            display: flex;
+            justify-content: flex-start; /* Default to left alignment */
+            margin-bottom: 10px;
+        }
+        .chat.user {
+            justify-content: flex-end; /* Align user messages to the right */
+        }
+        .chat .bubble {
+            max-width: 70%; /* Adjust max-width for better readability */
+            padding: 10px;
+            border-radius: 10px;
+            background-color: #f0f0f0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            word-wrap: break-word; /* Ensure long messages wrap properly */
+            line-height: 1.4; /* Adjust line height for readability */
+        }
+        .chat.user .bubble {
+            background-color: #4CAF50; /* User bubble color */
+            color: white;
+            align-self: flex-end; /* Align user bubble to the right */
+        }
+        .chat.bot .bubble {
+            background-color: #f0f0f0; /* Bot bubble color */
+            color: #333;
+        }
+        .spinner {
+            margin: 20px auto;
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #4CAF50;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Chat with Multiple PDFs</h1>
+        <div class="upload-section">
+            <h2>Upload Your PDFs</h2>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <input type="file" id="fileInput" name="files" multiple>
+                <ul class="file-list" id="fileList"></ul>
+                <button type="submit">Process</button>
+            </form>
+            <div id="uploadStatus"></div>
+        </div>
+        <div class="chat-section">
+            <h2>Ask a Question</h2>
+            <form id="questionForm">
+                <input type="text" id="question" name="question" placeholder="Type your question here" required>
+                <button type="submit">Ask</button>
+            </form>
+            <div class="spinner" id="spinner"></div>
+            <div id="chatHistory" class="chat-history"></div>
+        </div>
+    </div>
+    <script>
+        const fileList = document.getElementById('fileList');
+        const fileInput = document.getElementById('fileInput');
+
+        fileInput.addEventListener('change', function() {
+            updateFileList();
+        });
+
+        function updateFileList() {
+            fileList.innerHTML = '';
+            Array.from(fileInput.files).forEach((file, index) => {
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                li.innerHTML = `<span>${file.name}</span> <button onclick="removeFile(${index})">&times;</button>`;
+                fileList.appendChild(li);
+            });
+        }
+
+        function removeFile(index) {
+            const dt = new DataTransfer();
+            const { files } = fileInput;
+
+            for (let i = 0; i < files.length; i++) {
+                if (i !== index) {
+                    dt.items.add(files[i]);
+                }
+            }
+
+            fileInput.files = dt.files;
+            updateFileList();
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const xhr = new XMLHttpRequest();
+            const uploadStatus = document.getElementById('uploadStatus');
+
+            xhr.open('POST', '/upload', true);
+
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    uploadStatus.innerText = 'Uploading... ' + percentComplete.toFixed(2) + '%';
+                }
+            });
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    uploadStatus.innerText = JSON.parse(xhr.responseText).message;
+                } else {
+                    uploadStatus.innerText = 'Error processing files';
+                }
+            };
+
+            xhr.send(formData);
+        });
+
+        document.getElementById('questionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const question = document.getElementById('question').value.trim();
+            const spinner = document.getElementById('spinner');
+            const chatHistory = document.getElementById('chatHistory');
+            const questionInput = document.getElementById('question');
+
+            if (question === '') {
+                return; // Do not proceed if question is empty
+            }
+
+            spinner.style.display = 'block';
+
+            fetch('/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({ question: question })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Construct the dialogue bubble for user question
+                const userBubble = `
+                    <div class="chat user">
+                        <div class="bubble">${question}</div>
+                    </div>`;
+
+                // Construct the dialogue bubble for bot answer
+                const botBubble = `
+                    <div class="chat bot">
+                        <div class="bubble">${data.response}</div>
+                    </div>`;
+
+                // Append both bubbles to the chat history
+                chatHistory.insertAdjacentHTML('beforeend', userBubble);
+                chatHistory.insertAdjacentHTML('beforeend', botBubble);
+
+                // Scroll to the bottom of chat history
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+
+                // Clear input and hide spinner
+                questionInput.value = '';
+                spinner.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                spinner.style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
