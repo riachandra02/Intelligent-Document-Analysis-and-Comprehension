@@ -3,268 +3,302 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat with Multiple PDFs</title>
+    <title>Advanced Document Analysis</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f5f5f5;
+            background-color: #f9f9f9;
             color: #333;
         }
         .container {
-            max-width: 800px;
+            max-width: 700px;
             margin: 50px auto;
             padding: 20px;
             background-color: #fff;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        h1, h2 {
-            text-align: center;
-            color: #4CAF50;
+        h1 {
+            text-align: left;
+            font-size: 1.75em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
         }
         .upload-section, .chat-section {
             margin-bottom: 30px;
         }
-        .upload-section form, .chat-section form {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .upload-section input[type="file"] {
-            margin-bottom: 15px;
-        }
         .upload-section button, .chat-section button {
-            background-color: #4CAF50;
-            color: white;
+            background-color: #333;
+            color: #fff;
             border: none;
-            padding: 10px 20px;
+            padding: 8px 16px;
             border-radius: 5px;
             cursor: pointer;
+            font-weight: bold;
             transition: background-color 0.3s;
         }
         .upload-section button:hover, .chat-section button:hover {
-            background-color: #45a049;
+            background-color: #555;
         }
-        #uploadStatus {
-            margin-top: 15px;
-            color: #ff5722;
-            text-align: center;
+        .upload-section input[type="file"] {
+            display: none;
         }
-        .file-list {
-            list-style-type: none;
-            padding: 0;
-            margin: 10px 0;
-            width: 80%;
-        }
-        .file-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 3px 5px;
-            margin-bottom: 5px;
-            border: 1px solid #ccc;
+        .upload-section label {
+            background-color: #fff;
+            color: #333;
+            border: 1px solid #ddd;
+            padding: 8px 16px;
             border-radius: 5px;
-            background-color: #f9f9f9;
-            font-size: 12px;
-        }
-        .file-item span {
-            flex-grow: 1;
-            margin-right: 10px;
-        }
-        .file-item button {
-            background: none;
-            border: none;
-            color: #ff5722;
             cursor: pointer;
-            font-size: 16px;
+        }
+        .file-status {
+            display: inline-block;
+            margin-left: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-top: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            color: #666;
+            font-weight: bold;
+            border-top: 2px solid transparent;
+            transition: color 0.3s;
+        }
+        .tab:hover, .tab.active {
+            color: #333;
+            border-top: 2px solid #333;
+        }
+        .tab-content {
+            display: none;
+            margin-top: 20px;
+        }
+        .tab-content.active {
+            display: block;
         }
         .chat-section input[type="text"] {
-            width: 80%;
+            width: calc(100% - 120px);
             padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
+            margin-right: 10px;
+            border: 1px solid #ddd;
             border-radius: 5px;
         }
         .chat-history {
-            max-height: 300px; /* Adjust maximum height as needed */
-            overflow-y: auto; /* Enable vertical scrolling */
-            padding: 10px; /* Add padding for better readability */
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
         }
         .chat {
-            display: flex;
-            justify-content: flex-start; /* Default to left alignment */
-            margin-bottom: 10px;
-        }
-        .chat.user {
-            justify-content: flex-end; /* Align user messages to the right */
+            margin-bottom: 15px;
         }
         .chat .bubble {
-            max-width: 70%; /* Adjust max-width for better readability */
-            padding: 10px;
-            border-radius: 10px;
-            background-color: #f0f0f0;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            word-wrap: break-word; /* Ensure long messages wrap properly */
-            line-height: 1.4; /* Adjust line height for readability */
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            margin: 5px 0;
+        }
+        .chat.user {
+            text-align: right;
         }
         .chat.user .bubble {
-            background-color: #4CAF50; /* User bubble color */
+            background-color: #333;
             color: white;
-            align-self: flex-end; /* Align user bubble to the right */
+            display: inline-block;
+        }
+        .chat.bot {
+            text-align: left;
         }
         .chat.bot .bubble {
-            background-color: #f0f0f0; /* Bot bubble color */
+            background-color: #f0f0f0;
             color: #333;
+            display: inline-block;
         }
-        .spinner {
-            margin: 20px auto;
-            border: 4px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 4px solid #4CAF50;
-            width: 40px;
-            height: 40px;
-            animation: spin 2s linear infinite;
-            display: none;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        #processingStatus {
+            color: #666;
+            margin-top: 10px;
+            font-style: italic;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Chat with Multiple PDFs</h1>
+        <h1>Advanced Document Analysis</h1>
         <div class="upload-section">
-            <h2>Upload Your PDFs</h2>
+            <h2>Upload Documents</h2>
             <form id="uploadForm" enctype="multipart/form-data">
-                <input type="file" id="fileInput" name="files" multiple>
-                <ul class="file-list" id="fileList"></ul>
-                <button type="submit">Process</button>
+                <label for="fileInput">Choose Files</label>
+                <input type="file" id="fileInput" name="files" multiple accept=".pdf">
+                <span class="file-status" id="fileStatus">No file chosen</span>
+                <button type="button" onclick="processDocuments()">Process Documents</button>
             </form>
-            <div id="uploadStatus"></div>
+            <div id="processingStatus"></div>
         </div>
-        <div class="chat-section">
-            <h2>Ask a Question</h2>
+
+        <div class="tabs">
+            <div class="tab active" onclick="openTab(event, 'Chat')">Chat</div>
+            <div class="tab" onclick="openTab(event, 'Summarize')">Summarize</div>
+            <div class="tab" onclick="openTab(event, 'External')">External</div>
+            <div class="tab" onclick="openTab(event, 'Voicechat')">Voicechat</div>
+        </div>
+
+        <div id="Chat" class="tab-content active chat-section">
+            <h2>Chat with Document</h2>
             <form id="questionForm">
                 <input type="text" id="question" name="question" placeholder="Type your question here" required>
                 <button type="submit">Ask</button>
             </form>
-            <div class="spinner" id="spinner"></div>
-            <div id="chatHistory" class="chat-history"></div>
+            <div class="chat-history" id="chatHistory"></div>
+        </div>
+
+        <div id="Summarize" class="tab-content">
+            <h2>Summarize Document</h2>
+            <button onclick="generateSummary()">Generate Summary</button>
+            <div id="summaryResult"></div>
+        </div>
+
+        <div id="External" class="tab-content">
+            <h2>Fetch External Data</h2>
+            <button onclick="fetchExternalData()">Fetch Data</button>
+            <div id="externalDataResult"></div>
+        </div>
+
+        <div id="Voicechat" class="tab-content">
+            <h2>Start Voice Chat</h2>
+            <button onclick="startVoiceChat()">Start Voice Chat</button>
         </div>
     </div>
+
     <script>
-        const fileList = document.getElementById('fileList');
-        const fileInput = document.getElementById('fileInput');
+        let documentProcessed = false;
 
-        fileInput.addEventListener('change', function() {
-            updateFileList();
+        // File input handling
+        document.getElementById('fileInput').addEventListener('change', function() {
+            const fileStatus = document.getElementById('fileStatus');
+            const fileNames = Array.from(this.files).map(file => file.name).join(', ');
+            fileStatus.textContent = fileNames || 'No file chosen';
         });
 
-        function updateFileList() {
-            fileList.innerHTML = '';
-            Array.from(fileInput.files).forEach((file, index) => {
-                const li = document.createElement('li');
-                li.className = 'file-item';
-                li.innerHTML = `<span>${file.name}</span> <button onclick="removeFile(${index})">&times;</button>`;
-                fileList.appendChild(li);
-            });
+        // Tab functionality
+        function openTab(event, tabName) {
+            const tabs = document.getElementsByClassName('tab');
+            const contents = document.getElementsByClassName('tab-content');
+
+            Array.from(tabs).forEach(tab => tab.classList.remove('active'));
+            Array.from(contents).forEach(content => content.classList.remove('active'));
+
+            event.currentTarget.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
         }
 
-        function removeFile(index) {
-            const dt = new DataTransfer();
-            const { files } = fileInput;
-
-            for (let i = 0; i < files.length; i++) {
-                if (i !== index) {
-                    dt.items.add(files[i]);
-                }
+        // Process documents
+        function processDocuments() {
+            const fileInput = document.getElementById('fileInput');
+            const processingStatus = document.getElementById('processingStatus');
+            
+            if (fileInput.files.length === 0) {
+                alert('Please select PDF files first.');
+                return;
             }
 
-            fileInput.files = dt.files;
-            updateFileList();
-        }
-
-        document.getElementById('uploadForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            const xhr = new XMLHttpRequest();
-            const uploadStatus = document.getElementById('uploadStatus');
-
-            xhr.open('POST', '/upload', true);
-
-            xhr.upload.addEventListener('progress', function(e) {
-                if (e.lengthComputable) {
-                    const percentComplete = (e.loaded / e.total) * 100;
-                    uploadStatus.innerText = 'Uploading... ' + percentComplete.toFixed(2) + '%';
-                }
+            const formData = new FormData();
+            Array.from(fileInput.files).forEach(file => {
+                formData.append('files', file);
             });
 
-            xhr.onload = function() {
-                if (xhr.status === 200) {
-                    uploadStatus.innerText = JSON.parse(xhr.responseText).message;
-                } else {
-                    uploadStatus.innerText = 'Error processing files';
-                }
-            };
+            processingStatus.textContent = 'Processing documents...';
 
-            xhr.send(formData);
-        });
-
-        document.getElementById('questionForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const question = document.getElementById('question').value.trim();
-            const spinner = document.getElementById('spinner');
-            const chatHistory = document.getElementById('chatHistory');
-            const questionInput = document.getElementById('question');
-
-            if (question === '') {
-                return; // Do not proceed if question is empty
-            }
-
-            spinner.style.display = 'block';
-
-            fetch('/ask', {
+            fetch('/upload', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({ question: question })
+                body: formData
             })
             .then(response => response.json())
             .then(data => {
-                // Construct the dialogue bubble for user question
-                const userBubble = `
-                    <div class="chat user">
-                        <div class="bubble">${question}</div>
-                    </div>`;
-
-                // Construct the dialogue bubble for bot answer
-                const botBubble = `
-                    <div class="chat bot">
-                        <div class="bubble">${data.response}</div>
-                    </div>`;
-
-                // Append both bubbles to the chat history
-                chatHistory.insertAdjacentHTML('beforeend', userBubble);
-                chatHistory.insertAdjacentHTML('beforeend', botBubble);
-
-                // Scroll to the bottom of chat history
-                chatHistory.scrollTop = chatHistory.scrollHeight;
-
-                // Clear input and hide spinner
-                questionInput.value = '';
-                spinner.style.display = 'none';
+                documentProcessed = true;
+                processingStatus.textContent = data.message;
             })
             .catch(error => {
+                processingStatus.textContent = 'Error processing documents: ' + error.message;
                 console.error('Error:', error);
-                spinner.style.display = 'none';
             });
+        }
+
+        // Question form handling
+        document.getElementById('questionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (!documentProcessed) {
+                alert('Please process the documents before asking questions.');
+                return;
+            }
+
+            const question = document.getElementById('question').value.trim();
+            const chatHistory = document.getElementById('chatHistory');
+
+            if (question) {
+                // Add user question to chat
+                const userBubble = `<div class="chat user"><div class="bubble">${question}</div></div>`;
+                chatHistory.insertAdjacentHTML('beforeend', userBubble);
+                
+                // Clear input
+                document.getElementById('question').value = '';
+
+                // Send question to backend
+                fetch('/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        question: question
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const botBubble = `<div class="chat bot"><div class="bubble">${data.response}</div></div>`;
+                    chatHistory.insertAdjacentHTML('beforeend', botBubble);
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const errorBubble = `<div class="chat bot"><div class="bubble">Error: Unable to get response</div></div>`;
+                    chatHistory.insertAdjacentHTML('beforeend', errorBubble);
+                });
+            }
         });
+
+        // Placeholder functions for other tabs
+        function generateSummary() {
+            if (!documentProcessed) {
+                alert('Please process the documents first.');
+                return;
+            }
+            document.getElementById('summaryResult').textContent = 'Summary generation is not implemented yet.';
+        }
+
+        function fetchExternalData() {
+            if (!documentProcessed) {
+                alert('Please process the documents first.');
+                return;
+            }
+            document.getElementById('externalDataResult').textContent = 'External data fetching is not implemented yet.';
+        }
+
+        function startVoiceChat() {
+            if (!documentProcessed) {
+                alert('Please process the documents first.');
+                return;
+            }
+            alert('Voice chat functionality is not implemented yet.');
+        }
     </script>
 </body>
 </html>
-
