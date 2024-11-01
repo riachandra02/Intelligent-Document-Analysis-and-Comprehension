@@ -127,6 +127,27 @@
             margin-top: 10px;
             font-style: italic;
         }
+        .formatted-summary {
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        }
+        .summary-heading {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            color: #1a1a1a;
+        }
+
+        .summary-paragraph {
+            margin-bottom: 1em;
+            text-align: justify;
+        }
+
+        .summary-paragraph:last-child {
+            margin-bottom: 0;
+        }
     </style>
 </head>
 <body>
@@ -178,7 +199,16 @@
     </div>
 
     <script>
+        let processedFiles = new FormData();
         let documentProcessed = false;
+        let uploadedFiles = []; // Declare the variable to hold the uploaded file names
+
+        // File input handling
+        document.getElementById('fileInput').addEventListener('change', function() {
+            const fileStatus = document.getElementById('fileStatus');
+            uploadedFiles = Array.from(this.files).map(file => file.name); // Populate uploadedFiles
+            fileStatus.textContent = uploadedFiles.join(', ') || 'No file chosen';
+        });
 
         // File input handling
         document.getElementById('fileInput').addEventListener('change', function() {
@@ -209,16 +239,16 @@
                 return;
             }
 
-            const formData = new FormData();
+            processedFiles = new FormData(); // Reset and store files
             Array.from(fileInput.files).forEach(file => {
-                formData.append('files', file);
+                processedFiles.append('files', file);
             });
 
             processingStatus.textContent = 'Processing documents...';
 
             fetch('/upload', {
                 method: 'POST',
-                body: formData
+                body: processedFiles
             })
             .then(response => response.json())
             .then(data => {
@@ -269,35 +299,112 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    const errorBubble = `<div class="chat bot"><div class="bubble">Error: Unable to get response</div></div>`;
+                    const errorBubble = `<div class="chat bot"><div class="bubble">Error: ${error.message}</div></div>`;
                     chatHistory.insertAdjacentHTML('beforeend', errorBubble);
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
                 });
             }
         });
 
-        // Placeholder functions for other tabs
+        // Generate summary
         function generateSummary() {
             if (!documentProcessed) {
-                alert('Please process the documents first.');
+                alert('Please process the documents before generating a summary.');
                 return;
             }
-            document.getElementById('summaryResult').textContent = 'Summary generation is not implemented yet.';
+
+            const summaryResult = document.getElementById('summaryResult');
+            summaryResult.textContent = 'Generating summary...';
+
+            fetch('/summarize', {
+                method: 'POST',
+                body: processedFiles
+            })
+            .then(async response => {
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                let summary = data.summary || 'No summary available.';
+                
+                // Clean basic formatting but preserve potential headings
+                summary = summary
+                    .replace(/\*\*/g, '') // Remove bold
+                    .replace(/\*/g, '')   // Remove italic
+                    .replace(/_{2,}/g, '') // Remove underscores
+                    .replace(/`/g, '')    // Remove code formatting
+                    .trim();
+
+                const formattedSummary = document.createElement('div');
+                formattedSummary.className = 'formatted-summary';
+                
+                // Split by paragraphs
+                const paragraphs = summary.split('\n');
+                
+                paragraphs.forEach(para => {
+                    if (para.trim()) {
+                        const p = document.createElement('p');
+                        
+                        // Check if the paragraph looks like a heading
+                        const isHeading = (
+                            // Starts with "Section", "Chapter", "Part", etc.
+                            /^(Section|Chapter|Part|Introduction|Conclusion|Summary|Key Points|Overview):/i.test(para) ||
+                            // Starts with a number followed by dot or )
+                            /^\d+[\.)]\s/.test(para) ||
+                            // Is short (less than 60 chars) and ends with a colon
+                            (para.length < 60 && para.endsWith(':')) ||
+                            // Starts with a hash (Markdown heading)
+                            /^#+\s/.test(para)
+                        );
+                        
+                        // Remove any remaining hash symbols for markdown headings
+                        let cleanPara = para.replace(/^#+\s/, '');
+                        
+                        if (isHeading) {
+                            p.className = 'summary-heading';
+                        } else {
+                            p.className = 'summary-paragraph';
+                        }
+                        
+                        p.textContent = cleanPara.trim();
+                        formattedSummary.appendChild(p);
+                    }
+                });
+
+                // Clear previous content and add new formatted content
+                summaryResult.innerHTML = '';
+                summaryResult.appendChild(formattedSummary);
+            })
+            .catch(error => {
+                console.error('Error details:', error);
+                summaryResult.textContent = 'Error generating summary: ' + error.message;
+            });
         }
 
+
+        // Fetch external data
         function fetchExternalData() {
-            if (!documentProcessed) {
-                alert('Please process the documents first.');
-                return;
-            }
-            document.getElementById('externalDataResult').textContent = 'External data fetching is not implemented yet.';
+            fetch('/fetch-external-data', {
+                method: 'GET',
+            })
+            .then(response => response.json())
+            .then(data => {
+                const externalDataResult = document.getElementById('externalDataResult');
+                externalDataResult.textContent = JSON.stringify(data) || 'No data available.';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const externalDataResult = document.getElementById('externalDataResult');
+                externalDataResult.textContent = 'Error fetching data: ' + error.message;
+            });
         }
 
+        // Start voice chat (placeholder)
         function startVoiceChat() {
-            if (!documentProcessed) {
-                alert('Please process the documents first.');
-                return;
-            }
-            alert('Voice chat functionality is not implemented yet.');
+            alert('Voice chat feature is not yet implemented.');
         }
     </script>
 </body>
