@@ -72,4 +72,3 @@ def extract_keywords_from_pdf(pdf_file) -> List[str]:
     except Exception as e:
         print(f"Error extracting keywords: {str(e)}")
         return []
-
