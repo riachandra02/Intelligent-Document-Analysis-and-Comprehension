@@ -128,9 +128,9 @@
             font-style: italic;
         }
         .formatted-summary {
-        font-family: 'Helvetica Neue', Arial, sans-serif;
-        line-height: 1.6;
-        color: #333;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
         }
         .summary-heading {
             font-weight: bold;
@@ -139,14 +139,43 @@
             margin-bottom: 0.5em;
             color: #1a1a1a;
         }
-
         .summary-paragraph {
             margin-bottom: 1em;
             text-align: justify;
         }
-
         .summary-paragraph:last-child {
             margin-bottom: 0;
+        }
+        .search-section {
+            margin-bottom: 20px;
+        }
+        .search-input {
+            width: calc(100% - 120px);
+            padding: 10px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .research-results {
+            margin-top: 20px;
+        }
+        .research-item {
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            background-color: #fff;
+        }
+        .research-item h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.1em;
+        }
+        .research-item a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .research-item a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
@@ -187,10 +216,14 @@
         </div>
 
         <div id="External" class="tab-content">
-            <h2>Fetch External Data</h2>
-            <button onclick="fetchExternalData()">Fetch Data</button>
-            <div id="externalDataResult"></div>
-        </div>
+    <h2>Fetch External Research Data</h2>
+    <div class="search-section">
+        <button onclick="fetchExternalData()">Fetch Data</button>
+    </div>
+    <div id="externalDataResult" class="research-results">
+        <!-- Results will be displayed here -->
+    </div>
+</div>
 
         <div id="Voicechat" class="tab-content">
             <h2>Start Voice Chat</h2>
@@ -201,23 +234,14 @@
     <script>
         let processedFiles = new FormData();
         let documentProcessed = false;
-        let uploadedFiles = []; // Declare the variable to hold the uploaded file names
+        let uploadedFiles = [];
 
-        // File input handling
         document.getElementById('fileInput').addEventListener('change', function() {
             const fileStatus = document.getElementById('fileStatus');
-            uploadedFiles = Array.from(this.files).map(file => file.name); // Populate uploadedFiles
+            uploadedFiles = Array.from(this.files).map(file => file.name);
             fileStatus.textContent = uploadedFiles.join(', ') || 'No file chosen';
         });
 
-        // File input handling
-        document.getElementById('fileInput').addEventListener('change', function() {
-            const fileStatus = document.getElementById('fileStatus');
-            const fileNames = Array.from(this.files).map(file => file.name).join(', ');
-            fileStatus.textContent = fileNames || 'No file chosen';
-        });
-
-        // Tab functionality
         function openTab(event, tabName) {
             const tabs = document.getElementsByClassName('tab');
             const contents = document.getElementsByClassName('tab-content');
@@ -229,7 +253,6 @@
             document.getElementById(tabName).classList.add('active');
         }
 
-        // Process documents
         function processDocuments() {
             const fileInput = document.getElementById('fileInput');
             const processingStatus = document.getElementById('processingStatus');
@@ -239,7 +262,7 @@
                 return;
             }
 
-            processedFiles = new FormData(); // Reset and store files
+            processedFiles = new FormData();
             Array.from(fileInput.files).forEach(file => {
                 processedFiles.append('files', file);
             });
@@ -261,7 +284,6 @@
             });
         }
 
-        // Question form handling
         document.getElementById('questionForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
@@ -274,14 +296,11 @@
             const chatHistory = document.getElementById('chatHistory');
 
             if (question) {
-                // Add user question to chat
                 const userBubble = `<div class="chat user"><div class="bubble">${question}</div></div>`;
                 chatHistory.insertAdjacentHTML('beforeend', userBubble);
                 
-                // Clear input
                 document.getElementById('question').value = '';
 
-                // Send question to backend
                 fetch('/ask', {
                     method: 'POST',
                     headers: {
@@ -306,7 +325,6 @@
             }
         });
 
-        // Generate summary
         function generateSummary() {
             if (!documentProcessed) {
                 alert('Please process the documents before generating a summary.');
@@ -329,38 +347,29 @@
             })
             .then(data => {
                 let summary = data.summary || 'No summary available.';
-                
-                // Clean basic formatting but preserve potential headings
                 summary = summary
-                    .replace(/\*\*/g, '') // Remove bold
-                    .replace(/\*/g, '')   // Remove italic
-                    .replace(/_{2,}/g, '') // Remove underscores
-                    .replace(/`/g, '')    // Remove code formatting
+                    .replace(/\*\*/g, '')
+                    .replace(/\*/g, '')
+                    .replace(/_{2,}/g, '')
+                    .replace(/`/g, '')
                     .trim();
 
                 const formattedSummary = document.createElement('div');
                 formattedSummary.className = 'formatted-summary';
                 
-                // Split by paragraphs
                 const paragraphs = summary.split('\n');
                 
                 paragraphs.forEach(para => {
                     if (para.trim()) {
                         const p = document.createElement('p');
                         
-                        // Check if the paragraph looks like a heading
                         const isHeading = (
-                            // Starts with "Section", "Chapter", "Part", etc.
                             /^(Section|Chapter|Part|Introduction|Conclusion|Summary|Key Points|Overview):/i.test(para) ||
-                            // Starts with a number followed by dot or )
                             /^\d+[\.)]\s/.test(para) ||
-                            // Is short (less than 60 chars) and ends with a colon
                             (para.length < 60 && para.endsWith(':')) ||
-                            // Starts with a hash (Markdown heading)
                             /^#+\s/.test(para)
                         );
                         
-                        // Remove any remaining hash symbols for markdown headings
                         let cleanPara = para.replace(/^#+\s/, '');
                         
                         if (isHeading) {
@@ -374,7 +383,6 @@
                     }
                 });
 
-                // Clear previous content and add new formatted content
                 summaryResult.innerHTML = '';
                 summaryResult.appendChild(formattedSummary);
             })
@@ -384,27 +392,90 @@
             });
         }
 
-
-        // Fetch external data
+        // JavaScript: Add file validation and better error handling
         function fetchExternalData() {
-            fetch('/fetch-external-data', {
-                method: 'GET',
-            })
-            .then(response => response.json())
-            .then(data => {
-                const externalDataResult = document.getElementById('externalDataResult');
-                externalDataResult.textContent = JSON.stringify(data) || 'No data available.';
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                const externalDataResult = document.getElementById('externalDataResult');
-                externalDataResult.textContent = 'Error fetching data: ' + error.message;
-            });
+        const resultDiv = document.getElementById('externalDataResult');
+        const fileInput = document.getElementById('fileInput');
+
+        // Clear previous results
+        resultDiv.innerHTML = 'Processing...';
+
+        // Basic validation
+        if (!fileInput || !fileInput.files || !fileInput.files.length) {
+            resultDiv.innerHTML = 'Please select at least one PDF file.';
+            return;
         }
 
-        // Start voice chat (placeholder)
+        // Create FormData and append files
+        const formData = new FormData();
+        Array.from(fileInput.files).forEach(file => {
+            formData.append('files', file);
+        });
+
+        // Send request
+        fetch('/fetch-external-data', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Display detailed results
+            if (data.error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <p>Error: ${data.error}</p>
+                        <p>Debug Info: ${JSON.stringify(data.debug)}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const results = data.results.map(result => {
+                if (result.error) {
+                    return `
+                        <div class="file-result error">
+                            <h4>File: ${result.filename}</h4>
+                            <p>Error: ${result.error}</p>
+                        </div>
+                    `;
+                }
+                return `
+                    <div class="file-result success">
+                        <h4>File: ${result.filename}</h4>
+                        <p>Pages: ${result.pages}</p>
+                        <p>Characters on first page: ${result.first_page_chars}</p>
+                        <p>Sample text: ${result.sample_text}</p>
+                    </div>
+                `;
+            }).join('');
+
+            resultDiv.innerHTML = `
+                <div class="results">
+                    <h3>Processing Results:</h3>
+                    ${results}
+                </div>
+            `;
+        })
+        .catch(error => {
+            resultDiv.innerHTML = `
+                <div class="error">
+                    <p>Error processing request: ${error.message}</p>
+                </div>
+            `;
+        });
+    }
+
+
         function startVoiceChat() {
             alert('Voice chat feature is not yet implemented.');
+        }
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
     </script>
 </body>
