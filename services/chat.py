@@ -7,4 +7,3 @@ from services.chatutils import (
     search_internet,
     normalize_question,
 )
-
