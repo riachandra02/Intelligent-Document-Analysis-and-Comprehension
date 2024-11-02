@@ -17,8 +17,6 @@ nltk.download('averaged_perceptron_tagger')
 
 fetch_external_bp = Blueprint('fetch_external', __name__)
 
-fetch_external_bp = Blueprint('fetch_external', __name__)
-
 CORE_API_KEY = "WGVRl3nBb6Hxevh7TzU5DiIS8XQKwfOq"
 CORE_API_URL = "https://api.core.ac.uk/v3/search/works"
 
@@ -39,21 +37,21 @@ def extract_keywords_from_pdf(pdf_file) -> List[str]:
         
         # Remove stopwords, numbers, and short words
         words = [word for word in tokens 
-                if word.isalnum() and 
-                word not in stop_words and 
-                len(word) > 3]
+                 if word.isalnum() and 
+                 word not in stop_words and 
+                 len(word) > 3]
 
         # Get POS tags
         pos_tags = nltk.pos_tag(words)
         
-        # Keep only nouns and adjectives
+        # Keep only nouns and adjectives for keyword relevance
         keywords = [word for word, pos in pos_tags 
-                   if pos.startswith(('NN', 'JJ'))]
+                    if pos.startswith(('NN', 'JJ'))]
 
-        # Count frequency
+        # Count frequency of each keyword
         word_freq = Counter(keywords)
         
-        # Get top 5 most common keywords
+        # Extract the top 5 most common keywords
         top_keywords = [word for word, _ in word_freq.most_common(5)]
         
         return top_keywords
@@ -62,13 +60,11 @@ def extract_keywords_from_pdf(pdf_file) -> List[str]:
         print(f"Error extracting keywords: {e}")
         return []
 
-# routes/external.py
-# routes/external.py
 @fetch_external_bp.route('/fetch-external-data', methods=['POST'])
 def fetch_external_data():
-    """Simplified version for testing PDF processing"""
+    """Process uploaded PDFs and fetch related research data from CORE API based on extracted keywords."""
     try:
-        # Check if any files were uploaded
+        # Check if files were uploaded
         if 'files' not in request.files:
             return jsonify({
                 "error": "No files in request",
@@ -82,14 +78,11 @@ def fetch_external_data():
                 "debug": {"step": "files_list"}
             }), 400
 
-        # Process each PDF file
         results = []
+
+        # Process each PDF
         for file in files:
             try:
-                # Basic file checks
-                if not file.filename:
-                    continue
-                
                 if not file.filename.endswith('.pdf'):
                     results.append({
                         "filename": file.filename,
@@ -97,52 +90,49 @@ def fetch_external_data():
                     })
                     continue
 
-                # Read the file content
-                file_content = file.read()
-                if not file_content:
+                # Extract keywords from the PDF
+                keywords = extract_keywords_from_pdf(file)
+                if not keywords:
                     results.append({
                         "filename": file.filename,
-                        "error": "Empty file"
+                        "error": "No keywords extracted"
                     })
                     continue
 
-                # Try to read the PDF
-                pdf_file = io.BytesIO(file_content)
-                pdf_reader = PyPDF2.PdfReader(pdf_file)
-                
-                # Try to extract text from the first page
-                first_page = pdf_reader.pages[0]
-                text = first_page.extract_text()
-                
+                # Query CORE API with extracted keywords
+                query = " OR ".join(keywords)
+                response = requests.get(
+                    CORE_API_URL,
+                    headers={"Authorization": f"Bearer {CORE_API_KEY}"},
+                    params={"q": query, "limit": 10}
+                )
+
+                if response.status_code != 200:
+                    results.append({
+                        "filename": file.filename,
+                        "error": f"CORE API request failed with status code {response.status_code}"
+                    })
+                    continue
+
+                # Collect and structure the results from CORE API
+                articles = response.json().get('results', [])
+                article_links = [{"title": article["title"], "link": article["urls"]["core"]} for article in articles]
+
                 results.append({
                     "filename": file.filename,
-                    "pages": len(pdf_reader.pages),
-                    "first_page_chars": len(text),
-                    "sample_text": text[:100] if text else "No text extracted"
+                    "articles": article_links if article_links else "No relevant articles found."
                 })
 
             except Exception as e:
                 results.append({
                     "filename": file.filename,
-                    "error": str(e)
+                    "error": f"Error processing file: {str(e)}"
                 })
 
-        if not results:
-            return jsonify({
-                "error": "No files were processed",
-                "debug": {"step": "processing"}
-            }), 400
-
-        return jsonify({
-            "status": "success",
-            "results": results
-        })
+        return jsonify({"results": results})
 
     except Exception as e:
         return jsonify({
-            "error": str(e),
-            "debug": {
-                "step": "general",
-                "error_type": str(type(e).__name__)
-            }
+            "error": "An unexpected error occurred",
+            "debug": str(e)
         }), 500
