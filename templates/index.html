@@ -216,18 +216,19 @@
         </div>
 
         <div id="External" class="tab-content">
-    <h2>Fetch External Research Data</h2>
-    <div class="search-section">
-        <button onclick="fetchExternalData()">Fetch Data</button>
-    </div>
-    <div id="externalDataResult" class="research-results">
-        <!-- Results will be displayed here -->
-    </div>
-</div>
+            <h2>Fetch External Research Data</h2>
+            <div class="search-section">
+                <button onclick="fetchExternalData()">Fetch Data</button>
+            </div>
+            <div id="externalDataResult" class="research-results">
+                <!-- Results will be displayed here -->
+            </div>
+        </div>
 
         <div id="Voicechat" class="tab-content">
-            <h2>Start Voice Chat</h2>
-            <button onclick="startVoiceChat()">Start Voice Chat</button>
+            <h2>Voice Chat</h2>
+            <button class="voice-button" onclick="startVoiceChat()">Start Voice Recording</button>
+            <p id="voiceText">Click the button to start recording...</p>
         </div>
     </div>
 
@@ -235,6 +236,7 @@
         let processedFiles = new FormData();
         let documentProcessed = false;
         let uploadedFiles = [];
+        let mediaStream = null;
 
         document.getElementById('fileInput').addEventListener('change', function() {
             const fileStatus = document.getElementById('fileStatus');
@@ -466,9 +468,79 @@
     }
 
 
-        function startVoiceChat() {
-            alert('Voice chat feature is not yet implemented.');
+    function startVoiceChat() {
+        const voiceText = document.getElementById('voiceText');
+        
+        // First check if the browser supports getUserMedia
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            voiceText.innerText = 'Your browser does not support voice recording.';
+            return;
         }
+
+        // Update UI to show we're requesting permission
+        voiceText.innerText = 'Requesting microphone permission...';
+
+        // Request microphone permission
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                mediaStream = stream;
+                voiceText.innerText = 'Recording... (speak now)';
+                
+                // Start recording
+                return fetch('/voice/record-voice', {
+                    method: 'POST'
+                });
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.text) {
+                    voiceText.innerText = `You said: ${data.text}`;
+                } else if (data.error) {
+                    throw new Error(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                voiceText.innerText = `Error: ${error.message}`;
+            })
+            .finally(() => {
+                // Clean up: stop all tracks in the media stream
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                    mediaStream = null;
+                }
+            });
+    }
+
+
+    function updateVoiceStatus(message) {
+        const voiceText = document.getElementById('voiceText');
+        if (voiceText) {
+            voiceText.innerText = message;
+        }
+    }
+
+    function addVoiceChatUI() {
+        const voiceChatDiv = document.getElementById('Voicechat');
+        if (voiceChatDiv) {
+            voiceChatDiv.innerHTML = `
+                <h2>Voice Chat</h2>
+                <div class="voice-controls">
+                    <button id="startVoiceBtn" onclick="startVoiceChat()" class="voice-button">
+                        Start Voice Recording
+                    </button>
+                    <div id="voiceStatus" class="status-indicator"></div>
+                </div>
+                <p id="voiceText" class="voice-text">Click the button to start recording...</p>
+            `;
+        }
+    }
+
         function escapeHtml(unsafe) {
             return unsafe
                 .replace(/&/g, "&amp;")
