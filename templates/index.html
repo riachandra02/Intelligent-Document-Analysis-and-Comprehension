@@ -11,6 +11,7 @@
             padding: 0;
             background-color: #f9f9f9;
             color: #333;
+            position: relative;
         }
         .container {
             max-width: 700px;
@@ -19,6 +20,16 @@
             background-color: #fff;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 1;
+        }
+        .content--canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
         }
         h1 {
             text-align: left;
@@ -177,9 +188,47 @@
         .research-item a:hover {
             text-decoration: underline;
         }
+        .typing-bubbles {
+        display: flex;
+        justify-content: center;
+        margin-top: 10px;
+    }
+
+    .typing-bubbles .bubble {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #ccc;
+        margin: 0 5px;
+        animation: typing-bubble 1s infinite ease-in-out;
+    }
+
+    .typing-bubbles .bubble:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .typing-bubbles .bubble:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    @keyframes typing-bubble {
+        0% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(-5px);
+        }
+        100% {
+            transform: translateY(0);
+        }
+    }
+    html, body {
+        background: hsla(170,50%,3%,1);
+    }
     </style>
 </head>
 <body>
+    <div class="content--canvas"></div>
     <div class="container">
         <h1>Advanced Document Analysis</h1>
         <div class="upload-section">
@@ -231,8 +280,9 @@
             <p id="voiceText">Click the button to start recording...</p>
         </div>
     </div>
+    <div class="content--canvas"></div>
 
-    <script>
+    <script src="static\js\pipes-animation.js">
         let processedFiles = new FormData();
         let documentProcessed = false;
         let uploadedFiles = [];
@@ -286,6 +336,19 @@
             });
         }
 
+        function createTypingBubbles() {
+            const bubbles = document.createElement('div');
+            bubbles.classList.add('typing-bubbles');
+            
+            for (let i = 0; i < 3; i++) {
+                const bubble = document.createElement('div');
+                bubble.classList.add('bubble');
+                bubbles.appendChild(bubble);
+            }
+            
+            return bubbles;
+        }
+
         document.getElementById('questionForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
@@ -303,6 +366,9 @@
                 
                 document.getElementById('question').value = '';
 
+                const typingBubbles = createTypingBubbles();
+                chatHistory.insertAdjacentElement('beforeend', typingBubbles);
+
                 fetch('/ask', {
                     method: 'POST',
                     headers: {
@@ -314,12 +380,16 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    typingBubbles.remove();
                     const botBubble = `<div class="chat bot"><div class="bubble">${data.response}</div></div>`;
                     chatHistory.insertAdjacentHTML('beforeend', botBubble);
                     chatHistory.scrollTop = chatHistory.scrollHeight;
                 })
                 .catch(error => {
                     console.error('Error:', error);
+
+                    typingBubbles.remove();
+
                     const errorBubble = `<div class="chat bot"><div class="bubble">Error: ${error.message}</div></div>`;
                     chatHistory.insertAdjacentHTML('beforeend', errorBubble);
                     chatHistory.scrollTop = chatHistory.scrollHeight;
