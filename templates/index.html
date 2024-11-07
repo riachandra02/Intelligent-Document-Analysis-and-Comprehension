@@ -177,6 +177,39 @@
         .research-item a:hover {
             text-decoration: underline;
         }
+        .typing-bubbles {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .typing-bubbles .bubble {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ccc;
+            margin: 0 5px;
+            animation: typing-bubble 1s infinite ease-in-out;
+        }
+
+        .typing-bubbles .bubble:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-bubbles .bubble:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing-bubble {
+            0% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-5px);
+            }
+            100% {
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 <body>
@@ -286,6 +319,19 @@
             });
         }
 
+        function createTypingBubbles() {
+            const bubbles = document.createElement('div');
+            bubbles.classList.add('typing-bubbles');
+            
+            for (let i = 0; i < 3; i++) {
+                const bubble = document.createElement('div');
+                bubble.classList.add('bubble');
+                bubbles.appendChild(bubble);
+            }
+            
+            return bubbles;
+        }
+
         document.getElementById('questionForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
@@ -303,6 +349,9 @@
                 
                 document.getElementById('question').value = '';
 
+                const typingBubbles = createTypingBubbles();
+                chatHistory.insertAdjacentElement('beforeend', typingBubbles);
+
                 fetch('/ask', {
                     method: 'POST',
                     headers: {
@@ -314,18 +363,25 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+
+                    typingBubbles.remove();
+
                     const botBubble = `<div class="chat bot"><div class="bubble">${data.response}</div></div>`;
                     chatHistory.insertAdjacentHTML('beforeend', botBubble);
                     chatHistory.scrollTop = chatHistory.scrollHeight;
                 })
                 .catch(error => {
                     console.error('Error:', error);
+
+                    typingBubbles.remove();
+
                     const errorBubble = `<div class="chat bot"><div class="bubble">Error: ${error.message}</div></div>`;
                     chatHistory.insertAdjacentHTML('beforeend', errorBubble);
                     chatHistory.scrollTop = chatHistory.scrollHeight;
                 });
             }
         });
+
 
         function generateSummary() {
             if (!documentProcessed) {
