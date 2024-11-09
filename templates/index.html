@@ -55,10 +55,14 @@
             cursor: pointer;
         }
         .file-status {
-            display: inline-block;
-            margin-left: 10px;
+            display: block;
+            margin-top: 10px;
             font-size: 0.9em;
             color: #666;
+        }
+        .file-status div {
+            margin-bottom: 5px;
+            padding: 3px 0;
         }
         .tabs {
             display: flex;
@@ -251,8 +255,8 @@
             <form id="uploadForm" enctype="multipart/form-data">
                 <label for="fileInput">Choose Files</label>
                 <input type="file" id="fileInput" name="files" multiple accept=".pdf">
-                <span class="file-status" id="fileStatus">No file chosen</span>
                 <button type="button" onclick="processDocuments()">Process Documents</button>
+                <div id="fileStatus" class="file-status"></div>  <!-- Added this line -->
             </form>
             <div id="processingStatus"></div>
         </div>
@@ -310,8 +314,17 @@
 
         document.getElementById('fileInput').addEventListener('change', function() {
             const fileStatus = document.getElementById('fileStatus');
-            uploadedFiles = Array.from(this.files).map(file => file.name);
-            fileStatus.textContent = uploadedFiles.join(', ') || 'No file chosen';
+            const files = this.files;
+            
+            console.log('Files selected:', files); // Debug log
+            
+            let fileList = '';
+            for(let i = 0; i < files.length; i++) {
+                fileList += `<div>${escapeHtml(files[i].name)}</div>`;
+            }
+            
+            fileStatus.innerHTML = fileList;
+            console.log('File status HTML:', fileList); // Debug log
         });
 
         function openTab(event, tabName) {
@@ -624,14 +637,18 @@
         }
     }
 
-        function escapeHtml(unsafe) {
-            return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
+    function escapeHtml(str) {
+        return str.replace(/[&<>"']/g, function(match) {
+            const escape = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            };
+            return escape[match];
+        });
+    }
     </script>
 </body>
 </html>
