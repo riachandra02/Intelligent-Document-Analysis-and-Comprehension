@@ -524,53 +524,43 @@
     }
 
 
+    // Replace this function in your index.html
     function startVoiceChat() {
         const voiceText = document.getElementById('voiceText');
+        const chatHistory = document.getElementById('chatHistory');
         
-        // First check if the browser supports getUserMedia
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             voiceText.innerText = 'Your browser does not support voice recording.';
             return;
         }
-
-        // Update UI to show we're requesting permission
-        voiceText.innerText = 'Requesting microphone permission...';
-
-        // Request microphone permission
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(stream => {
-                mediaStream = stream;
-                voiceText.innerText = 'Recording... (speak now)';
-                
-                // Start recording
-                return fetch('/voice/record-voice', {
-                    method: 'POST'
-                });
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.text) {
-                    voiceText.innerText = `You said: ${data.text}`;
-                } else if (data.error) {
-                    throw new Error(data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                voiceText.innerText = `Error: ${error.message}`;
-            })
-            .finally(() => {
-                // Clean up: stop all tracks in the media stream
-                if (mediaStream) {
-                    mediaStream.getTracks().forEach(track => track.stop());
-                    mediaStream = null;
-                }
-            });
+        
+        voiceText.innerText = 'Listening...';
+        
+        fetch('/voice-interactive/start-conversation', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                voiceText.innerText = `Error: ${data.error}`;
+                return;
+            }
+            
+            // Update voice text area
+            voiceText.innerText = `You said: ${data.transcribed_text}`;
+            
+            // Add to chat history
+            const userBubble = `<div class="chat user"><div class="bubble">${data.transcribed_text}</div></div>`;
+            const botBubble = `<div class="chat bot"><div class="bubble">${data.response}</div></div>`;
+            
+            chatHistory.insertAdjacentHTML('beforeend', userBubble);
+            chatHistory.insertAdjacentHTML('beforeend', botBubble);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            voiceText.innerText = `Error: ${error.message}`;
+        });
     }
 
 
