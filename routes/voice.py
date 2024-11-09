@@ -1,52 +1,94 @@
-# routes/voice.py
+#voice_interactive.py
 from flask import Blueprint, jsonify, request
 import speech_recognition as sr
+from langchain.vectorstores import FAISS
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import logging
+from services.chatutils import get_conversational_chain, normalize_question
 
-voice_bp = Blueprint('voice', __name__, url_prefix='/voice')
+voice_interactive_bp = Blueprint('voice-interactive', __name__, url_prefix='/voice-interactive')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-@voice_bp.route('/record-voice', methods=['POST'])
-def record_voice():
+class VoiceHandler:
+    def __init__(self):
+        self.recognizer = sr.Recognizer()
+        self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        self.chain = get_conversational_chain()
+        
+    def get_answer_from_docs(self, question):
+        """Get answer from the processed documents"""
+        try:
+            # Load the existing vector store
+            vector_store = FAISS.load_local(
+                "faiss_index",
+                self.embeddings,
+                allow_dangerous_deserialization=True
+            )
+            
+            # Get relevant documents
+            normalized_question = normalize_question(question)
+            docs = vector_store.similarity_search(normalized_question)
+            
+            # Get response using the chain
+            response = self.chain.invoke({
+                "input_documents": docs,
+                "question": normalized_question
+            })
+            
+            return response.get("output_text", "").strip()
+            
+        except Exception as e:
+            logger.error(f"Error getting answer: {e}")
+            raise
+
+    def transcribe_audio(self):
+        """Capture and transcribe audio"""
+        try:
+            with sr.Microphone() as source:
+                logger.info("Adjusting for ambient noise...")
+                self.recognizer.adjust_for_ambient_noise(source, duration=1)
+                
+                logger.info("Listening for speech...")
+                audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=15)
+                
+                logger.info("Transcribing speech...")
+                text = self.recognizer.recognize_google(audio)
+                logger.info(f"Transcribed text: {text}")
+                
+                return text
+                
+        except sr.UnknownValueError:
+            logger.error("Could not understand audio")
+            raise ValueError("Could not understand audio")
+        except sr.RequestError as e:
+            logger.error(f"Could not request results: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Error during transcription: {e}")
+            raise
+
+@voice_interactive_bp.route('/start-conversation', methods=['POST'])
+def start_conversation():
+    """Handle voice input and return chat response"""
     try:
-        recognizer = sr.Recognizer()
+        voice_handler = VoiceHandler()
         
-        # Configure recognition parameters
-        recognizer.energy_threshold = 4000
-        recognizer.dynamic_energy_threshold = True
-        recognizer.pause_threshold = 0.8
+        # Get transcribed text
+        transcribed_text = voice_handler.transcribe_audio()
+        if not transcribed_text:
+            return jsonify({"error": "No speech detected"}), 400
         
-        with sr.Microphone() as source:
-            logger.info("Initializing microphone...")
-            # Adjust for ambient noise
-            recognizer.adjust_for_ambient_noise(source, duration=1)
-            logger.info("Listening for speech...")
-            
-            # Set timeout and phrase_time_limit to avoid hanging
-            audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
-            
-            logger.info("Audio captured, processing...")
-            
-            # Try multiple recognition services
-            try:
-                text = recognizer.recognize_google(audio)
-                return jsonify({"text": text})
-            except sr.RequestError:
-                logger.error("Google recognition failed, falling back to Sphinx")
-                try:
-                    text = recognizer.recognize_sphinx(audio)
-                    return jsonify({"text": text})
-                except Exception as sphinx_error:
-                    logger.error(f"Sphinx recognition failed: {sphinx_error}")
-                    raise
-                    
-    except sr.UnknownValueError:
-        logger.error("Speech was not understood")
-        return jsonify({"error": "Could not understand speech. Please speak clearly and try again."}), 400
-    except sr.RequestError as e:
-        logger.error(f"Speech recognition service error: {e}")
-        return jsonify({"error": "Speech recognition service is currently unavailable."}), 503
+        # Get answer from documents
+        response = voice_handler.get_answer_from_docs(transcribed_text)
+        
+        return jsonify({
+            "transcribed_text": transcribed_text,
+            "response": response
+        })
+        
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 400
     except Exception as e:
-        logger.error(f"Unexpected error in voice recognition: {e}")
-        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
+        logger.error(f"Error in conversation: {e}")
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
