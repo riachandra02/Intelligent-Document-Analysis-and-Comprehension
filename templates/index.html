@@ -199,6 +199,32 @@
             animation-delay: 0.4s;
         }
 
+        .chat-input-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .chat-input-container input[type="text"] {
+            width: calc(100% - 40px);
+            padding-right: 40px;
+            padding-left: 10px;
+            border-radius: 5px;
+        }
+
+        /* .chat-input-container button#micButton {
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        } */
+
+        /* .chat-input-container button#micButton svg {
+            pointer-events: none;
+        } */
+
         @keyframes typing-bubble {
             0% {
                 transform: translateY(0);
@@ -230,13 +256,19 @@
             <div class="tab active" onclick="openTab(event, 'Chat')">Chat</div>
             <div class="tab" onclick="openTab(event, 'Summarize')">Summarize</div>
             <div class="tab" onclick="openTab(event, 'External')">External</div>
-            <div class="tab" onclick="openTab(event, 'Voicechat')">Voicechat</div>
+            <!-- <div class="tab" onclick="openTab(event, 'Voicechat')">Voicechat</div> -->
         </div>
 
         <div id="Chat" class="tab-content active chat-section">
             <h2>Chat with Document</h2>
             <form id="questionForm">
                 <input type="text" id="question" name="question" placeholder="Type your question here" required>
+                <!-- Mic icon SVG -->
+                    <button type="button" id="micButton" onclick="startVoiceChat()">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="#fff">
+                            <path d="M12 14c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3s-3 1.34-3 3v5c0 1.66 1.34 3 3 3zm4.3-3c0 2.14-1.72 3.88-3.83 3.99L12.47 17h-0.93l-0.01-.01C9.42 16.88 7.7 15.14 7.7 13h1.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5h1.5zm-2.5 8v-1.5h1.5v1.5h2v-1.5h1.5v1.5H17v-1.5h-2v1.5h-0.7z"/>
+                        </svg>
+                    </button>
                 <button type="submit">Ask</button>
             </form>
             <div class="chat-history" id="chatHistory"></div>
