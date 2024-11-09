@@ -85,9 +85,9 @@
             display: block;
         }
         .chat-section input[type="text"] {
-            width: calc(100% - 120px);
+            width: calc(100% - 200px);
             padding: 10px;
-            margin-right: 10px;
+            /* margin-right: 10px; */
             border: 1px solid #ddd;
             border-radius: 5px;
         }
@@ -116,6 +116,11 @@
         }
         .chat.bot {
             text-align: left;
+        }
+        #questionForm button[type="submit"] {
+            width: 60px; /* Adjust width as desired */
+            height: 33px; /* Adjust height as desired */
+            padding: 10px; /* Optional: change padding for more control */
         }
         .chat.bot .bubble {
             background-color: #f0f0f0;
@@ -265,7 +270,7 @@
                 <input type="text" id="question" name="question" placeholder="Type your question here" required>
                 <!-- Mic icon SVG -->
                     <button type="button" id="micButton" onclick="startVoiceChat()">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="#fff">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="#fff">
                             <path d="M12 14c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3s-3 1.34-3 3v5c0 1.66 1.34 3 3 3zm4.3-3c0 2.14-1.72 3.88-3.83 3.99L12.47 17h-0.93l-0.01-.01C9.42 16.88 7.7 15.14 7.7 13h1.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5h1.5zm-2.5 8v-1.5h1.5v1.5h2v-1.5h1.5v1.5H17v-1.5h-2v1.5h-0.7z"/>
                         </svg>
                     </button>
