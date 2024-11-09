@@ -61,8 +61,29 @@
             color: #666;
         }
         .file-status div {
-            margin-bottom: 5px;
-            padding: 3px 0;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .delete-file {
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            padding: 0 0 0 10px;
+            font-size: 1.2em;
+            line-height: 1;
+            transition: color 0.3s;
+        }
+
+        .delete-file:hover {
+            color: #ff4444;
         }
         .tabs {
             display: flex;
@@ -316,16 +337,50 @@
             const fileStatus = document.getElementById('fileStatus');
             const files = this.files;
             
-            console.log('Files selected:', files); // Debug log
+            // let fileList = '';
+            // for(let i = 0; i < files.length; i++) {
+            //     fileList += `<div>${escapeHtml(files[i].name)}</div>`;
+            // }
             
+            // fileStatus.innerHTML = fileList;
+            // console.log('File status HTML:', fileList); // Debug log
+
+            uploadedFiles = Array.from(files);
+    
+            displayFiles();
+        });
+
+
+        function displayFiles() {
+            const fileStatus = document.getElementById('fileStatus');
             let fileList = '';
-            for(let i = 0; i < files.length; i++) {
-                fileList += `<div>${escapeHtml(files[i].name)}</div>`;
-            }
+            
+            uploadedFiles.forEach((file, index) => {
+                fileList += `
+                    <div>
+                        ${escapeHtml(file.name)}
+                        <button class="delete-file" onclick="deleteFile(${index})" title="Delete file">×</button>
+                    </div>
+                `;
+            });
             
             fileStatus.innerHTML = fileList;
-            console.log('File status HTML:', fileList); // Debug log
-        });
+        }
+
+        function deleteFile(index) {
+            // Remove file from array
+            uploadedFiles.splice(index, 1);
+            
+            // Create new FileList-like object
+            const dt = new DataTransfer();
+            uploadedFiles.forEach(file => dt.items.add(file));
+            
+            // Update the input's files
+            document.getElementById('fileInput').files = dt.files;
+            
+            // Update display
+            displayFiles();
+        }
 
         function openTab(event, tabName) {
             const tabs = document.getElementsByClassName('tab');
