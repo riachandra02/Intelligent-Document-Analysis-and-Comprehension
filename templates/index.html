@@ -266,6 +266,115 @@
                 transform: translateY(0);
             }
         }
+
+        dialog.modal {
+            padding: 0;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+        }
+
+        dialog::backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            padding: 20px;
+            text-align: center;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .modal-content p {
+            margin-bottom: 20px;
+            color: #666;
+        }
+
+        .modal-content button {
+            background-color: #333;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        .modal-content button:hover {
+            background-color: #555;
+        }
+
+        .recording {
+            animation: pulse 1.5s ease-in-out infinite;
+            background-color: #ff4444 !important;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        #micButton {
+            position: relative;
+            padding: 8px;
+            margin-right: 5px;
+            border: none;
+            border-radius: 50%;
+            background-color: #333;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #micButton:hover {
+            background-color: #555;
+        }
+
+        #micButton.recording svg {
+            fill: white;
+        }
+
+        .recording-indicator {
+            display: none;
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 8px;
+            height: 8px;
+            background-color: #ff4444;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        #micButton.recording .recording-indicator {
+            display: block;
+        }
+
+        #recordingStatus {
+            display: none;
+            font-size: 0.8em;
+            color: #ff4444;
+            margin-top: 5px;
+            text-align: center;
+        }
+
+        #recordingStatus.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -294,13 +403,15 @@
             <form id="questionForm">
                 <input type="text" id="question" name="question" placeholder="Type your question here" required>
                 <!-- Mic icon SVG -->
-                    <button type="button" id="micButton" onclick="startVoiceChat()">
-                        <svg xmlns="https://www.svgrepo.com/svg/1902/microphone" viewBox="0 0 24 24" width="15" height="15" fill="#fff">
-                            <path d="M12 14c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3s-3 1.34-3 3v5c0 1.66 1.34 3 3 3zm4.3-3c0 2.14-1.72 3.88-3.83 3.99L12.47 17h-0.93l-0.01-.01C9.42 16.88 7.7 15.14 7.7 13h1.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5h1.5zm-2.5 8v-1.5h1.5v1.5h2v-1.5h1.5v1.5H17v-1.5h-2v1.5h-0.7z"/>
-                        </svg>
-                    </button>
+                <button type="button" id="micButton" onclick="startVoiceChat()">
+                    <div class="recording-indicator"></div>
+                    <svg xmlns="https://www.svgrepo.com/svg/1902/microphone" viewBox="0 0 24 24" width="15" height="15" fill="#fff">
+                        <path d="M12 14c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3s-3 1.34-3 3v5c0 1.66 1.34 3 3 3zm4.3-3c0 2.14-1.72 3.88-3.83 3.99L12.47 17h-0.93l-0.01-.01C9.42 16.88 7.7 15.14 7.7 13h1.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5h1.5zm-2.5 8v-1.5h1.5v1.5h2v-1.5h1.5v1.5H17v-1.5h-2v1.5h-0.7z"/>
+                    </svg>
+                </button>
                 <button type="submit">Ask</button>
             </form>
+            <div id="recordingStatus">Recording...</div>
             <div class="chat-history" id="chatHistory"></div>
         </div>
 
@@ -325,6 +436,13 @@
             <button class="voice-button" onclick="startVoiceChat()">Start Voice Recording</button>
             <p id="voiceText">Click the button to start recording...</p>
         </div>
+        <dialog id="processingAlertModal" class="modal">
+            <div class="modal-content">
+                <h3>Document Processing Required</h3>
+                <p>Please upload and process a document before asking questions.</p>
+                <button onclick="this.closest('dialog').close()">Got it</button>
+            </div>
+        </dialog>
     </div>
 
     <script>
@@ -380,6 +498,14 @@
             
             // Update display
             displayFiles();
+
+            // Update processing status
+            const processingStatus = document.getElementById('processingStatus');
+            if (processingStatus.textContent.includes('processed')) {
+                processingStatus.textContent = 'Process again';
+                // Reset the documentProcessed flag if you're using it
+                documentProcessed = false;
+            }
         }
 
         function openTab(event, tabName) {
@@ -441,7 +567,7 @@
             e.preventDefault();
 
             if (!documentProcessed) {
-                alert('Please process the documents before asking questions.');
+                document.getElementById('processingAlertModal').showModal();
                 return;
             }
 
@@ -631,41 +757,59 @@
 
     // Replace this function in your index.html
     function startVoiceChat() {
-        const voiceText = document.getElementById('voiceText');
-        const chatHistory = document.getElementById('chatHistory');
-        
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            voiceText.innerText = 'Your browser does not support voice recording.';
+        if (!documentProcessed) {
+            document.getElementById('processingAlertModal').showModal();
             return;
         }
+
+        const micButton = document.getElementById('micButton');
+        const recordingStatus = document.getElementById('recordingStatus');
         
-        voiceText.innerText = 'Listening...';
-        
-        fetch('/voice-interactive/start-conversation', {
-            method: 'POST'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                voiceText.innerText = `Error: ${data.error}`;
+        // Toggle recording state
+        if (micButton.classList.contains('recording')) {
+            // Stop recording
+            micButton.classList.remove('recording');
+            recordingStatus.classList.remove('active');
+            // Add your stop recording logic here
+        } else {
+            // Start recording
+            micButton.classList.add('recording');
+            recordingStatus.classList.add('active');
+            
+            // Your existing voice chat code here
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('Your browser does not support voice recording.');
+                micButton.classList.remove('recording');
+                recordingStatus.classList.remove('active');
                 return;
             }
-            
-            // Update voice text area
-            voiceText.innerText = `You said: ${data.transcribed_text}`;
-            
-            // Add to chat history
-            const userBubble = `<div class="chat user"><div class="bubble">${data.transcribed_text}</div></div>`;
-            const botBubble = `<div class="chat bot"><div class="bubble">${data.response}</div></div>`;
-            
-            chatHistory.insertAdjacentHTML('beforeend', userBubble);
-            chatHistory.insertAdjacentHTML('beforeend', botBubble);
-            chatHistory.scrollTop = chatHistory.scrollHeight;
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            voiceText.innerText = `Error: ${error.message}`;
-        });
+
+            fetch('/voice-interactive/start-conversation', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Add to chat history
+                const userBubble = `<div class="chat user"><div class="bubble">${data.transcribed_text}</div></div>`;
+                const botBubble = `<div class="chat bot"><div class="bubble">${data.response}</div></div>`;
+                
+                chatHistory.insertAdjacentHTML('beforeend', userBubble);
+                chatHistory.insertAdjacentHTML('beforeend', botBubble);
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                // Always remove recording state when done
+                micButton.classList.remove('recording');
+                recordingStatus.classList.remove('active');
+            });
+        }
     }
 
 
