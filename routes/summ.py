@@ -19,4 +19,3 @@ def summarize_files():
 
     summary = summarize_text(text_chunks)
     return jsonify({"summary": summary})
-
