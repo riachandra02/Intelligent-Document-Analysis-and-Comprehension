@@ -8,4 +8,3 @@ def transcribe_audio():
         audio = recognizer.listen(source)
         print("Processing audio...")
         return recognizer.recognize_google(audio)
-
