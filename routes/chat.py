@@ -42,4 +42,3 @@ def ask_question():
         response["output_text"] += f"\n\nInternet Search Result:\n{internet_result}"
     
     return jsonify({"response": response["output_text"]})
-
