@@ -1,138 +1,55 @@
 # routes/external.py
-import requests
 from flask import Blueprint, request, jsonify
-import PyPDF2
-from collections import Counter
-import re
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-import nltk
-from typing import List, Dict
-import io  # Add this import
+from services.summ import get_pdf_text, get_text_chunks, summarize_text
+from services.external import extract_keywords, search_papers, clean_paper_data,download_paper
 
-# Download required NLTK data
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('averaged_perceptron_tagger')
+external_bp = Blueprint('external', __name__)
 
-fetch_external_bp = Blueprint('fetch_external', __name__)
-
-CORE_API_KEY = "WGVRl3nBb6Hxevh7TzU5DiIS8XQKwfOq"
-CORE_API_URL = "https://api.core.ac.uk/v3/search/works"
-
-def extract_keywords_from_pdf(pdf_file) -> List[str]:
-    """
-    Extract keywords from a PDF file using frequency analysis and POS tagging
-    """
+@external_bp.route('/search_related', methods=['POST'])
+def search_related_papers():
+    """Endpoint to summarize PDF files, extract keywords and search for related papers."""
     try:
-        # Read PDF content
-        pdf_reader = PyPDF2.PdfReader(pdf_file)
-        text = ""
-        for page in pdf_reader.pages:
-            text += page.extract_text()
-
-        # Tokenize and clean text
-        tokens = word_tokenize(text.lower())
-        stop_words = set(stopwords.words('english'))
+        uploaded_files = request.files.getlist("files")
+        text = get_pdf_text(uploaded_files)
+        text_chunks = get_text_chunks(text)
         
-        # Remove stopwords, numbers, and short words
-        words = [word for word in tokens 
-                 if word.isalnum() and 
-                 word not in stop_words and 
-                 len(word) > 3]
-
-        # Get POS tags
-        pos_tags = nltk.pos_tag(words)
+        if not text_chunks:
+            return jsonify({"error": "No text chunks created from the uploaded files."}), 400
+            
+        # Generate the summary
+        summary = summarize_text(text_chunks)
         
-        # Keep only nouns and adjectives for keyword relevance
-        keywords = [word for word, pos in pos_tags 
-                    if pos.startswith(('NN', 'JJ'))]
-
-        # Count frequency of each keyword
-        word_freq = Counter(keywords)
+        # Extract keywords from the summary
+        keywords = extract_keywords(summary)
         
-        # Extract the top 5 most common keywords
-        top_keywords = [word for word, _ in word_freq.most_common(5)]
+        # Search for related papers using the keywords
+        papers = search_papers(keywords)
         
-        return top_keywords
-
-    except Exception as e:
-        print(f"Error extracting keywords: {e}")
-        return []
-
-@fetch_external_bp.route('/fetch-external-data', methods=['POST'])
-def fetch_external_data():
-    """Process uploaded PDFs and fetch related research data from CORE API based on extracted keywords."""
-    try:
-        # Check if files were uploaded
-        if 'files' not in request.files:
-            return jsonify({
-                "error": "No files in request",
-                "debug": {"step": "file_check"}
-            }), 400
-
-        files = request.files.getlist('files')
-        if not files:
-            return jsonify({
-                "error": "No files provided",
-                "debug": {"step": "files_list"}
-            }), 400
-
-        results = []
-
-        # Process each PDF
-        for file in files:
-            try:
-                if not file.filename.endswith('.pdf'):
-                    results.append({
-                        "filename": file.filename,
-                        "error": "Not a PDF file"
-                    })
-                    continue
-
-                # Extract keywords from the PDF
-                keywords = extract_keywords_from_pdf(file)
-                if not keywords:
-                    results.append({
-                        "filename": file.filename,
-                        "error": "No keywords extracted"
-                    })
-                    continue
-
-                # Query CORE API with extracted keywords
-                query = " OR ".join(keywords)
-                response = requests.get(
-                    CORE_API_URL,
-                    headers={"Authorization": f"Bearer {CORE_API_KEY}"},
-                    params={"q": query, "limit": 10}
-                )
-
-                if response.status_code != 200:
-                    results.append({
-                        "filename": file.filename,
-                        "error": f"CORE API request failed with status code {response.status_code}"
-                    })
-                    continue
-
-                # Collect and structure the results from CORE API
-                articles = response.json().get('results', [])
-                article_links = [{"title": article["title"], "link": article["urls"]["core"]} for article in articles]
-
-                results.append({
-                    "filename": file.filename,
-                    "articles": article_links if article_links else "No relevant articles found."
-                })
-
-            except Exception as e:
-                results.append({
-                    "filename": file.filename,
-                    "error": f"Error processing file: {str(e)}"
-                })
-
-        return jsonify({"results": results})
-
-    except Exception as e:
+        # Clean and validate paper data
+        cleaned_papers = clean_paper_data(papers)
+        
         return jsonify({
-            "error": "An unexpected error occurred",
-            "debug": str(e)
-        }), 500
+            "summary": summary,
+            "keywords": keywords,
+            "related_papers": cleaned_papers
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in search_related_papers: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@external_bp.route('/extract_keywords', methods=['POST'])
+def get_keywords():
+    """Endpoint to extract keywords from the summary."""
+    try:
+        data = request.get_json()
+        summary = data.get('summary', '')
+        
+        if not summary:
+            return jsonify({"error": "No summary provided"}), 400
+            
+        keywords = extract_keywords(summary)
+        return jsonify({"keywords": keywords})
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
